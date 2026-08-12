@@ -172,4 +172,45 @@ $("historyBtn").onclick = async () => {
 
 $("closeHistory").onclick = () => $("historyDialog").close();
 
+
+$("resetBtn").onclick = async () => {
+  const code = prompt("Enter unlock code to delete ALL products and history:");
+  if (code === null) return;
+
+  if (code !== "0012") {
+    alert("Incorrect unlock code.");
+    return;
+  }
+
+  const confirmed = confirm(
+    "WARNING: This will permanently delete ALL stock items and ALL history from Supabase. Continue?"
+  );
+
+  if (!confirmed) return;
+
+  // Delete history first because it references products
+  const { error: historyError } = await db
+    .from("stock_history")
+    .delete()
+    .neq("id", "00000000-0000-0000-0000-000000000000");
+
+  if (historyError) {
+    alert("Could not delete stock history: " + historyError.message);
+    return;
+  }
+
+  const { error: productError } = await db
+    .from("products")
+    .delete()
+    .neq("id", "00000000-0000-0000-0000-000000000000");
+
+  if (productError) {
+    alert("Could not delete products: " + productError.message);
+    return;
+  }
+
+  alert("All stock data has been deleted.");
+  await loadProducts();
+};
+
 loadProducts();

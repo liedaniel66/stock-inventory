@@ -33,3 +33,6 @@ dialog::backdrop{background:rgba(16,24,40,.45)}
 .move-in{color:#027a48;font-weight:800}.move-out{color:#b54708;font-weight:800}
 @media(max-width:800px){.product-form{grid-template-columns:1fr 1fr}header{flex-direction:column}}
 @media(max-width:560px){.product-form,.summary{grid-template-columns:1fr}.toolbar{flex-direction:column;align-items:stretch}.toolbar input{max-width:none}.app{width:min(100% - 20px,1180px);margin:16px auto}}
+
+.header-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn.danger{background:#b42318;color:#fff}
