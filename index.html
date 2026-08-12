@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stock Inventory</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>Stock Inventory</h1>
+        <p>Shared inventory powered by Supabase</p>
+      </div>
+      <button id="historyBtn" class="btn secondary">History</button>
+    </header>
+
+    <section class="summary">
+      <div class="card">
+        <span>Products</span>
+        <strong id="productCount">0</strong>
+      </div>
+      <div class="card">
+        <span>Total Quantity</span>
+        <strong id="totalQuantity">0</strong>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Add Product</h2>
+      <form id="productForm" class="product-form">
+        <label>Product
+          <input id="productInput" required placeholder="e.g. T-Shirt">
+        </label>
+        <label>Color
+          <input id="colorInput" required placeholder="e.g. Black">
+        </label>
+        <label>Quantity
+          <input id="quantityInput" type="number" min="0" step="1" value="0" required>
+        </label>
+        <button type="submit" class="btn primary">Add Product</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="toolbar">
+        <h2>Current Stock</h2>
+        <input id="searchInput" placeholder="Search product or color...">
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Color</th>
+              <th>Quantity</th>
+              <th>Stock IN</th>
+              <th>Stock OUT</th>
+            </tr>
+          </thead>
+          <tbody id="stockBody"></tbody>
+        </table>
+        <div id="emptyStock" class="empty">No products yet.</div>
+      </div>
+    </section>
+  </div>
+
+  <dialog id="movementDialog">
+    <form id="movementForm" class="dialog-card">
+      <button type="button" id="closeMovement" class="close">×</button>
+      <h2 id="movementTitle">Stock IN</h2>
+      <p id="movementProduct"></p>
+      <input type="hidden" id="movementProductId">
+      <input type="hidden" id="movementType">
+
+      <label>Quantity
+        <input id="movementQty" type="number" min="1" step="1" value="1" required>
+      </label>
+      <label>Note
+        <input id="movementNote" placeholder="Optional note">
+      </label>
+
+      <div class="dialog-actions">
+        <button type="button" id="cancelMovement" class="btn secondary">Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="historyDialog" class="history-dialog">
+    <div class="dialog-card large">
+      <button type="button" id="closeHistory" class="close">×</button>
+      <h2>Stock History</h2>
+      <div class="table-wrap history-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Product</th>
+              <th>Color</th>
+              <th>Movement</th>
+              <th>Quantity</th>
+              <th>Note</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+        <div id="emptyHistory" class="empty">No history yet.</div>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
