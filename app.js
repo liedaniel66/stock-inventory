@@ -54,25 +54,57 @@ $("productForm").addEventListener("submit", async e => {
   const color = $("colorInput").value.trim();
   const quantity = Number($("quantityInput").value);
 
-  const { data, error } = await db.from("products")
-    .insert({ product, color, quantity })
-    .select()
-    .single();
-
-  if(error){
-    alert(error.code === "23505" ? "This product + color already exists." : error.message);
+  if (quantity < 0) {
+    alert("Quantity cannot be negative.");
     return;
   }
 
-  if(quantity > 0){
-    await db.from("stock_history").insert({
-      product_id: data.id,
-      product,
-      color,
-      movement: "IN",
-      quantity,
-      note: "Opening stock"
+  // Check if Product + Color already exists (case-insensitive)
+  const existing = products.find(p =>
+    p.product.trim().toLowerCase() === product.toLowerCase() &&
+    p.color.trim().toLowerCase() === color.toLowerCase()
+  );
+
+  if (existing) {
+    // Duplicate found: treat input quantity as STOCK IN
+    if (quantity === 0) {
+      alert("This product + color already exists. Enter a quantity greater than 0 to add stock.");
+      return;
+    }
+
+    const { error } = await db.rpc("change_stock", {
+      p_product_id: existing.id,
+      p_movement: "IN",
+      p_quantity: quantity,
+      p_note: "Added from product input"
     });
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+  } else {
+    // New Product + Color
+    const { data, error } = await db.from("products")
+      .insert({ product, color, quantity })
+      .select()
+      .single();
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    if (quantity > 0) {
+      await db.from("stock_history").insert({
+        product_id: data.id,
+        product,
+        color,
+        movement: "IN",
+        quantity,
+        note: "Opening stock"
+      });
+    }
   }
 
   e.target.reset();
@@ -139,5 +171,46 @@ $("historyBtn").onclick = async () => {
 };
 
 $("closeHistory").onclick = () => $("historyDialog").close();
+
+
+$("resetBtn").onclick = async () => {
+  const code = prompt("Enter unlock code to delete ALL products and history:");
+  if (code === null) return;
+
+  if (code !== "0012") {
+    alert("Incorrect unlock code.");
+    return;
+  }
+
+  const confirmed = confirm(
+    "WARNING: This will permanently delete ALL stock items and ALL history from Supabase. Continue?"
+  );
+
+  if (!confirmed) return;
+
+  // Delete history first because it references products
+  const { error: historyError } = await db
+    .from("stock_history")
+    .delete()
+    .neq("id", "00000000-0000-0000-0000-000000000000");
+
+  if (historyError) {
+    alert("Could not delete stock history: " + historyError.message);
+    return;
+  }
+
+  const { error: productError } = await db
+    .from("products")
+    .delete()
+    .neq("id", "00000000-0000-0000-0000-000000000000");
+
+  if (productError) {
+    alert("Could not delete products: " + productError.message);
+    return;
+  }
+
+  alert("All stock data has been deleted.");
+  await loadProducts();
+};
 
 loadProducts();
