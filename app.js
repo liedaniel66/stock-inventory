@@ -32,8 +32,18 @@ function renderProducts(){
 
   $("stockBody").innerHTML = visible.map(p => `
     <tr>
-      <td>${esc(p.product)}</td>
-      <td>${esc(p.color)}</td>
+      <td>
+        <div class="inline-edit" id="product-wrap-${p.id}">
+          <span class="editable-text" title="Click to edit"
+                onclick="startInlineEdit('${p.id}','product')">${esc(p.product)}</span>
+        </div>
+      </td>
+      <td>
+        <div class="inline-edit" id="color-wrap-${p.id}">
+          <span class="editable-text" title="Click to edit"
+                onclick="startInlineEdit('${p.id}','color')">${esc(p.color)}</span>
+        </div>
+      </td>
       <td class="qty">${p.quantity}</td>
       <td><button class="mini in" onclick="openMovement('${p.id}','IN')">+ IN</button></td>
       <td><button class="mini out" onclick="openMovement('${p.id}','OUT')">− OUT</button></td>
@@ -173,44 +183,114 @@ $("historyBtn").onclick = async () => {
 $("closeHistory").onclick = () => $("historyDialog").close();
 
 
-$("resetBtn").onclick = async () => {
-  const code = prompt("Enter unlock code to delete ALL products and history:");
-  if (code === null) return;
 
-  if (code !== "0012") {
-    alert("Incorrect unlock code.");
+window.startInlineEdit = function(id, field){
+  const p = products.find(x => x.id === id);
+  if(!p) return;
+
+  const wrap = document.getElementById(`${field}-wrap-${id}`);
+  if(!wrap) return;
+
+  const currentValue = field === "product" ? p.product : p.color;
+
+  wrap.innerHTML = `
+    <input class="inline-edit-input" id="${field}-input-${id}" value="${esc(currentValue)}">
+    <div class="inline-actions">
+      <button type="button" class="inline-save"
+              onclick="saveInlineEdit('${id}','${field}')">Save</button>
+      <button type="button" class="inline-cancel"
+              onclick="renderProducts()">Cancel</button>
+    </div>
+  `;
+
+  const input = document.getElementById(`${field}-input-${id}`);
+  input.focus();
+  input.select();
+
+  input.addEventListener("keydown", (e) => {
+    if(e.key === "Enter") saveInlineEdit(id, field);
+    if(e.key === "Escape") renderProducts();
+  });
+};
+
+window.saveInlineEdit = async function(id, field){
+  const input = document.getElementById(`${field}-input-${id}`);
+  if(!input) return;
+
+  const value = input.value.trim();
+  if(!value){
+    alert(`${field === "product" ? "Product" : "Color"} cannot be empty.`);
     return;
   }
 
-  const confirmed = confirm(
-    "WARNING: This will permanently delete ALL stock items and ALL history from Supabase. Continue?"
+  const current = products.find(x => x.id === id);
+  if(!current) return;
+
+  const updatedProduct = field === "product" ? value : current.product;
+  const updatedColor = field === "color" ? value : current.color;
+
+  const duplicate = products.some(p =>
+    p.id !== id &&
+    p.product.trim().toLowerCase() === updatedProduct.toLowerCase() &&
+    p.color.trim().toLowerCase() === updatedColor.toLowerCase()
   );
 
-  if (!confirmed) return;
-
-  // Delete history first because it references products
-  const { error: historyError } = await db
-    .from("stock_history")
-    .delete()
-    .neq("id", "00000000-0000-0000-0000-000000000000");
-
-  if (historyError) {
-    alert("Could not delete stock history: " + historyError.message);
+  if(duplicate){
+    alert("Another item already uses this Product + Color combination.");
     return;
   }
 
-  const { error: productError } = await db
+  const payload = field === "product" ? { product: value } : { color: value };
+
+  const { error } = await db
     .from("products")
-    .delete()
-    .neq("id", "00000000-0000-0000-0000-000000000000");
+    .update(payload)
+    .eq("id", id);
 
-  if (productError) {
-    alert("Could not delete products: " + productError.message);
+  if(error){
+    alert(error.code === "23505"
+      ? "Another item already uses this Product + Color combination."
+      : error.message);
     return;
   }
 
-  alert("All stock data has been deleted.");
   await loadProducts();
 };
+
+const resetButton = $("resetBtn");
+if (resetButton) {
+  resetButton.addEventListener("click", async () => {
+    const code = prompt("Enter unlock code to delete ALL products and history:");
+    if (code === null) return;
+
+    if (code !== "0012") {
+      alert("Incorrect unlock code.");
+      return;
+    }
+
+    const confirmed = confirm(
+      "WARNING: This will permanently delete ALL stock items and ALL history. Continue?"
+    );
+    if (!confirmed) return;
+
+    resetButton.disabled = true;
+    resetButton.textContent = "Resetting...";
+
+    const { error } = await db.rpc("reset_inventory", {
+      p_unlock_code: code
+    });
+
+    resetButton.disabled = false;
+    resetButton.textContent = "Reset All Data";
+
+    if (error) {
+      alert("Reset failed: " + error.message);
+      return;
+    }
+
+    alert("All stock data and history have been deleted.");
+    await loadProducts();
+  });
+}
 
 loadProducts();
